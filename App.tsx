@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Page, Prompt, Category, Post, Course } from './types';
 import { INITIAL_PROMPTS, CATEGORIES, COURSES as INITIAL_COURSES } from './constants';
 import Navbar from './components/Navbar';
@@ -19,26 +19,17 @@ const App: React.FC = () => {
   const [courses, setCourses] = useState<Course[]>([]);
   const [posts, setPosts] = useState<Post[]>([]);
   const [toast, setToast] = useState<{ message: string; visible: boolean }>({ message: '', visible: false });
-  const [searchQuery, setSearchQuery] = useState('');
+  const [isSyncing, setIsSyncing] = useState(false);
 
-  // Persistency
+  // Load Data from LocalStorage (as cache) and Setup Initial State
   useEffect(() => {
     const savedPrompts = localStorage.getItem('pe_prompts');
     const savedPosts = localStorage.getItem('pe_posts');
     const savedCourses = localStorage.getItem('pe_courses');
     
-    if (savedPrompts) setPrompts(JSON.parse(savedPrompts));
-    else {
-      setPrompts(INITIAL_PROMPTS);
-      localStorage.setItem('pe_prompts', JSON.stringify(INITIAL_PROMPTS));
-    }
-
-    if (savedCourses) setCourses(JSON.parse(savedCourses));
-    else {
-      setCourses(INITIAL_COURSES);
-      localStorage.setItem('pe_courses', JSON.stringify(INITIAL_COURSES));
-    }
-
+    setPrompts(savedPrompts ? JSON.parse(savedPrompts) : INITIAL_PROMPTS);
+    setCourses(savedCourses ? JSON.parse(savedCourses) : INITIAL_COURSES);
+    
     if (savedPosts) setPosts(JSON.parse(savedPosts));
     else {
       const initialPosts = [
@@ -46,9 +37,15 @@ const App: React.FC = () => {
         { id: '2', author: 'مریم', content: 'بهترین مدل برای کدزنی پایتون چیه؟', likes: 12, date: '۱ ساعت پیش' }
       ];
       setPosts(initialPosts);
-      localStorage.setItem('pe_posts', JSON.stringify(initialPosts));
     }
   }, []);
+
+  // Sync Data to LocalStorage whenever state changes
+  useEffect(() => {
+    if (prompts.length > 0) localStorage.setItem('pe_prompts', JSON.stringify(prompts));
+    if (courses.length > 0) localStorage.setItem('pe_courses', JSON.stringify(courses));
+    if (posts.length > 0) localStorage.setItem('pe_posts', JSON.stringify(posts));
+  }, [prompts, courses, posts]);
 
   const showToast = (message: string) => {
     setToast({ message, visible: true });
@@ -73,10 +70,9 @@ const App: React.FC = () => {
 
   const handleLike = (id: string) => {
     const updated = prompts.map(p => 
-      p.id === id ? { ...p, isLiked: !p.isLiked, likes: p.isLiked ? p.likes - 1 : p.likes + 1 } : p
+      p.id === id ? { ...p, isLiked: !p.isLiked, likes: p.isLiked ? p.likes - 1 : (p.likes || 0) + 1 } : p
     );
     setPrompts(updated);
-    localStorage.setItem('pe_prompts', JSON.stringify(updated));
   };
 
   const handleSave = (id: string) => {
@@ -84,7 +80,6 @@ const App: React.FC = () => {
       p.id === id ? { ...p, isSaved: !p.isSaved } : p
     );
     setPrompts(updated);
-    localStorage.setItem('pe_prompts', JSON.stringify(updated));
     const target = updated.find(p => p.id === id);
     if (target?.isSaved) showToast('به سیو شده‌ها اضافه شد');
   };
@@ -97,54 +92,49 @@ const App: React.FC = () => {
       likes: 0,
       date: 'لحظاتی پیش'
     };
-    const updated = [newPost, ...posts];
-    setPosts(updated);
-    localStorage.setItem('pe_posts', JSON.stringify(updated));
+    setPosts([newPost, ...posts]);
     showToast('پست با موفقیت ارسال شد');
   };
 
-  // CRUD for Prompts
   const savePrompt = (prompt: Prompt) => {
-    let updated;
     const exists = prompts.find(p => p.id === prompt.id);
     if (exists) {
-      updated = prompts.map(p => p.id === prompt.id ? prompt : p);
+      setPrompts(prompts.map(p => p.id === prompt.id ? prompt : p));
       showToast('پرامپت ویرایش شد');
     } else {
-      updated = [prompt, ...prompts];
+      setPrompts([prompt, ...prompts]);
       showToast('پرامپت جدید اضافه شد');
     }
-    setPrompts(updated);
-    localStorage.setItem('pe_prompts', JSON.stringify(updated));
   };
 
   const deletePrompt = (id: string) => {
-    const updated = prompts.filter(p => p.id !== id);
-    setPrompts(updated);
-    localStorage.setItem('pe_prompts', JSON.stringify(updated));
+    setPrompts(prompts.filter(p => p.id !== id));
     showToast('پرامپت حذف شد');
   };
 
-  // CRUD for Courses
   const saveCourse = (course: Course) => {
-    let updated;
     const exists = courses.find(c => c.id === course.id);
     if (exists) {
-      updated = courses.map(c => c.id === course.id ? course : c);
+      setCourses(courses.map(c => c.id === course.id ? course : c));
       showToast('آموزش ویرایش شد');
     } else {
-      updated = [course, ...courses];
+      setCourses([course, ...courses]);
       showToast('آموزش جدید اضافه شد');
     }
-    setCourses(updated);
-    localStorage.setItem('pe_courses', JSON.stringify(updated));
   };
 
   const deleteCourse = (id: string) => {
-    const updated = courses.filter(c => c.id !== id);
-    setCourses(updated);
-    localStorage.setItem('pe_courses', JSON.stringify(updated));
+    setCourses(courses.filter(c => c.id !== id));
     showToast('آموزش حذف شد');
+  };
+
+  // Simulation of Cloud Sync
+  const syncWithCloud = async () => {
+    setIsSyncing(true);
+    // در دنیای واقعی اینجا کد Fetch/Push به دیتابیس قرار می‌گیرد
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    setIsSyncing(false);
+    showToast('اطلاعات با موفقیت همگام‌سازی شد');
   };
 
   const renderPage = () => {
@@ -154,14 +144,25 @@ const App: React.FC = () => {
       case 'education': return <Education courses={courses} />;
       case 'community': return <Community posts={posts} onAddPost={addPost} />;
       case 'saved': return <Saved prompts={prompts.filter(p => p.isSaved)} onLike={handleLike} onSave={handleSave} showToast={showToast} />;
-      case 'admin': return <Admin prompts={prompts} posts={posts} courses={courses} onDeletePrompt={deletePrompt} onSavePrompt={savePrompt} onDeleteCourse={deleteCourse} onSaveCourse={saveCourse} onNavigate={navigateTo} />;
+      case 'admin': return <Admin 
+        prompts={prompts} 
+        posts={posts} 
+        courses={courses} 
+        onDeletePrompt={deletePrompt} 
+        onSavePrompt={savePrompt} 
+        onDeleteCourse={deleteCourse} 
+        onSaveCourse={saveCourse} 
+        onNavigate={navigateTo}
+        onSync={syncWithCloud}
+        isSyncing={isSyncing}
+      />;
       default: return <Home onNavigate={navigateTo} trendingPrompts={prompts.slice(0, 8)} onLike={handleLike} onSave={handleSave} />;
     }
   };
 
   return (
     <div className="min-h-screen pb-20 md:pb-0">
-      <Navbar onNavigate={navigateTo} onSearch={setSearchQuery} canGoBack={pageHistory.length > 1} onBack={goBack} />
+      <Navbar onNavigate={navigateTo} onSearch={() => {}} canGoBack={pageHistory.length > 1} onBack={goBack} isSyncing={isSyncing} />
       
       <main className="max-w-7xl mx-auto px-4 pt-16 animate-in fade-in duration-500">
         {renderPage()}
