@@ -1,6 +1,13 @@
 
 export type Category = 'تصویر' | 'ویدیو' | 'متن' | 'موسیقی' | 'کد';
 
+export interface Folder {
+  id: string;
+  name: string;
+  count: number;
+  type: Category;
+}
+
 export interface Prompt {
   id: string;
   title: string;
@@ -13,6 +20,7 @@ export interface Prompt {
   author: string;
   isLiked?: boolean;
   isSaved?: boolean;
+  createdAt?: string;
 }
 
 export interface Post {
