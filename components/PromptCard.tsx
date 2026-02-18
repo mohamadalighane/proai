@@ -12,6 +12,8 @@ interface PromptCardProps {
 
 const PromptCard: React.FC<PromptCardProps> = ({ prompt, onLike, onSave, showToast }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  
+
 
   return (
     <>

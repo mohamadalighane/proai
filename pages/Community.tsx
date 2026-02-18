@@ -17,6 +17,12 @@ const Community: React.FC<CommunityProps> = ({ posts, onAddPost }) => {
     setNewPost('');
   };
 
+ 
+
+
+
+
+
   return (
     <div className="max-w-2xl mx-auto space-y-8 pb-10">
       <div className="glass p-6 rounded-3xl border border-white/10">
